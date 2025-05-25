@@ -44,8 +44,8 @@ class MuJoCoControlNode(Node):
             if i < len(self.left_joint_values):
                 self.left_joint_values[i] = value
         
-        # 로깅 (디버깅용)
-        self.get_logger().debug(f'Left joints: {self.left_joint_values}')
+        # 디버깅을 위한 로깅
+        self.get_logger().info(f'Left joints received: {self.left_joint_values}')
     
     def right_joints_callback(self, msg):
         """오른쪽 팔 조인트 상태 콜백"""
@@ -53,20 +53,33 @@ class MuJoCoControlNode(Node):
             if i < len(self.right_joint_values):
                 self.right_joint_values[i] = value
         
-        # 로깅 (디버깅용)
-        self.get_logger().debug(f'Right joints: {self.right_joint_values}')
+        # 디버깅을 위한 로깅
+        self.get_logger().info(f'Right joints received: {self.right_joint_values}')
     
     def update_robot(self):
         """컨트롤러 데이터를 기반으로 로봇 업데이트"""
+        # ROS2에서 받은 조인트 순서: [base_rotation, shoulder, elbow, wrist, gripper]
+        # MuJoCo actuator 순서와 매핑
+        
         # 왼쪽 팔 조인트 적용
-        for i, value in enumerate(self.left_joint_values):
-            if i < len(self.left_joints):
-                self.data.ctrl[self.left_joints[i]] = value
+        if len(self.left_joint_values) >= 5:
+            self.data.ctrl[self.left_joints[0]] = self.left_joint_values[0]  # 베이스 회전 (가장 중요!)
+            self.data.ctrl[self.left_joints[1]] = self.left_joint_values[1]  # 어깨
+            self.data.ctrl[self.left_joints[2]] = self.left_joint_values[2]  # 팔꿈치
+            self.data.ctrl[self.left_joints[3]] = self.left_joint_values[3]  # 손목
+            self.data.ctrl[self.left_joints[4]] = self.left_joint_values[4]  # 그리퍼
         
         # 오른쪽 팔 조인트 적용
-        for i, value in enumerate(self.right_joint_values):
-            if i < len(self.right_joints):
-                self.data.ctrl[self.right_joints[i]] = value
+        if len(self.right_joint_values) >= 5:
+            self.data.ctrl[self.right_joints[0]] = self.right_joint_values[0]  # 베이스 회전
+            self.data.ctrl[self.right_joints[1]] = self.right_joint_values[1]  # 어깨
+            self.data.ctrl[self.right_joints[2]] = self.right_joint_values[2]  # 팔꿈치
+            self.data.ctrl[self.right_joints[3]] = self.right_joint_values[3]  # 손목
+            self.data.ctrl[self.right_joints[4]] = self.right_joint_values[4]  # 그리퍼
+        
+        # 디버깅: 실제 적용된 제어 값 출력
+        self.get_logger().debug(f'Left ctrl values: {[self.data.ctrl[j] for j in self.left_joints]}')
+        self.get_logger().debug(f'Right ctrl values: {[self.data.ctrl[j] for j in self.right_joints]}')
     
     def send_haptic_feedback(self, side, value):
         """햅틱 피드백 전송"""
@@ -84,10 +97,16 @@ print(f"Current working directory: {os.getcwd()}")
 try:
     # Load the model from the existing XML file
     print("Attempting to load the model...")
-    # model = mujoco.MjModel.from_xml_path('dual_arm_robot.xml')
     model = mujoco.MjModel.from_xml_path('/home/joonghyun/CookingBot/Mujoco/dual_arm_robot.xml')
     data = mujoco.MjData(model)
     print("Model loaded successfully!")
+    
+    # 디버깅: 모델 정보 출력
+    print(f"Number of actuators: {model.nu}")
+    print("Actuator names:")
+    for i in range(model.nu):
+        actuator_name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR, i)
+        print(f"  [{i}]: {actuator_name}")
     
     # Initialize GLFW and create window
     print("Initializing GLFW...")
@@ -137,6 +156,13 @@ try:
                 global use_ros2_control
                 use_ros2_control = not use_ros2_control
                 print(f"ROS2 control: {'ON' if use_ros2_control else 'OFF'}")
+            elif key == glfw.KEY_D:
+                # 디버깅: 현재 조인트 상태 출력
+                print("=== Current Joint States ===")
+                print(f"Left joints: {[data.ctrl[j] for j in left_joints]}")
+                print(f"Right joints: {[data.ctrl[j] for j in right_joints]}")
+                print(f"Left positions: {[data.qpos[j] for j in range(5)]}")
+                print(f"Right positions: {[data.qpos[j] for j in range(5, 10)]}")
 
     def mouse_button(window, button, act, mods):
         global button_left, button_middle, button_right
@@ -206,7 +232,8 @@ try:
             "SPACE: Start box lifting task",
             "R: Reset position",
             "H: Ready position",
-            f"T: Toggle ROS2 control (currently {'ON' if use_ros2_control else 'OFF'})"
+            f"T: Toggle ROS2 control (currently {'ON' if use_ros2_control else 'OFF'})",
+            "D: Debug joint states"
         ]
         overlay = "\n".join(text)
         mujoco.mjr_overlay(
@@ -223,20 +250,23 @@ try:
 
     # Get actuator indices for both robots
     left_joints = [
-        model.actuator('left_actuator_joint1').id,
-        model.actuator('left_actuator_joint2').id,
-        model.actuator('left_actuator_joint3').id,
-        model.actuator('left_actuator_joint4').id,
-        model.actuator('left_actuator_gripper_joint').id
+        model.actuator('left_actuator_joint1').id,      # 베이스 회전
+        model.actuator('left_actuator_joint2').id,      # 어깨
+        model.actuator('left_actuator_joint3').id,      # 팔꿈치
+        model.actuator('left_actuator_joint4').id,      # 손목
+        model.actuator('left_actuator_gripper_joint').id # 그리퍼
     ]
 
     right_joints = [
-        model.actuator('right_actuator_joint1').id,
-        model.actuator('right_actuator_joint2').id,
-        model.actuator('right_actuator_joint3').id,
-        model.actuator('right_actuator_joint4').id,
-        model.actuator('right_actuator_gripper_joint').id
+        model.actuator('right_actuator_joint1').id,      # 베이스 회전
+        model.actuator('right_actuator_joint2').id,      # 어깨
+        model.actuator('right_actuator_joint3').id,      # 팔꿈치
+        model.actuator('right_actuator_joint4').id,      # 손목
+        model.actuator('right_actuator_gripper_joint').id # 그리퍼
     ]
+
+    print(f"Left joint actuator IDs: {left_joints}")
+    print(f"Right joint actuator IDs: {right_joints}")
 
     # Reset to initial pose - both arms in position to reach the box
     def reset_position():
@@ -274,6 +304,18 @@ try:
     def box_lifting_task():
         print("Starting box manipulation task...")
         
+        # 베이스 회전 테스트 추가
+        print("Testing base rotation...")
+        data.ctrl[left_joints[0]] = 0.5   # 왼쪽 베이스를 30도 회전
+        data.ctrl[right_joints[0]] = -0.5  # 오른쪽 베이스를 -30도 회전
+        simulate(2.0)
+        
+        # 원래 위치로 복귀
+        data.ctrl[left_joints[0]] = 0.0
+        data.ctrl[right_joints[0]] = 0.0
+        simulate(1.0)
+        
+        # 나머지 기존 태스크 계속...
         # 1. Move both arms to box position
         # Left arm moves to box from left side
         data.ctrl[left_joints[0]] = 0.0        # Base joint
@@ -377,6 +419,7 @@ try:
         print("R: Reset position")
         print("H: Ready position")
         print("T: Toggle ROS2 control")
+        print("D: Debug joint states")
         
         print("Initializing robots...")
         reset_position()

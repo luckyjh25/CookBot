@@ -88,26 +88,52 @@ class ROS2SocketBridge(Node):
                 # 줄바꿈으로 구분된 메시지 처리
                 while '\n' in self.data_buffer:
                     line, self.data_buffer = self.data_buffer.split('\n', 1)
-                    try:
-                        message = json.loads(line)
-                        self.process_message(message)
-                    except json.JSONDecodeError as e:
-                        self.get_logger().warn(f'Received invalid JSON data: {e}')
+                    if line.strip():  # 빈 줄 무시
+                        try:
+                            message = json.loads(line)
+                            self.process_message(message)
+                        except json.JSONDecodeError as e:
+                            self.get_logger().warn(f'Received invalid JSON data: {line[:100]}... Error: {e}')
                 
             except Exception as e:
                 self.get_logger().error(f'Error receiving data: {e}')
                 self.connected = False
                 break
+        
+        self.get_logger().info('Receive thread ended')
     
     def process_message(self, message):
         """수신된 메시지 처리"""
         try:
             message_type = message.get('type')
+            self.get_logger().debug(f'Received message type: {message_type}')
             
-            # 조인트 값 메시지 처리
-            if message_type == 'joint_values':
+            # 조인트 상태 메시지 처리 (수정된 부분)
+            if message_type == 'joint_state':  # joint_values에서 joint_state로 변경
+                side = message.get('side')
+                joint_positions = message.get('joint_positions')  # joint_values에서 joint_positions로 변경
+                
+                if joint_positions is None:
+                    self.get_logger().warn('No joint_positions in message')
+                    return
+                
+                self.get_logger().info(f'Processing {side} joints: {joint_positions}')
+                
+                if side == 'left':
+                    self.publish_left_joints(joint_positions)
+                elif side == 'right':
+                    self.publish_right_joints(joint_positions)
+            
+            # 조인트 값 메시지 처리 (기존 호환성)
+            elif message_type == 'joint_values':
                 side = message.get('side')
                 joint_values = message.get('joint_values')
+                
+                if joint_values is None:
+                    self.get_logger().warn('No joint_values in message')
+                    return
+                
+                self.get_logger().info(f'Processing {side} joints (legacy): {joint_values}')
                 
                 if side == 'left':
                     self.publish_left_joints(joint_values)
@@ -123,12 +149,26 @@ class ROS2SocketBridge(Node):
                 elif side == 'right':
                     self.right_trigger_pressed = message.get('trigger_pressed', False)
             
+            # 햅틱 피드백 메시지 처리
+            elif message_type == 'haptic_feedback':
+                side = message.get('side')
+                value = message.get('value', 0.0)
+                self.get_logger().info(f'Received haptic feedback for {side}: {value}')
+            
+            else:
+                self.get_logger().warn(f'Unknown message type: {message_type}')
+            
         except Exception as e:
             self.get_logger().error(f'Error processing message: {e}')
+            self.get_logger().error(f'Message content: {message}')
     
     def publish_left_joints(self, joint_values):
         """왼쪽 팔 조인트 상태 발행"""
         try:
+            if len(joint_values) < 5:
+                self.get_logger().warn(f'Incomplete joint data for left arm: {joint_values}')
+                return
+            
             # JointState 메시지 생성
             msg = JointState()
             
@@ -142,11 +182,11 @@ class ROS2SocketBridge(Node):
                 'left_joint1', 'left_joint2', 'left_joint3', 
                 'left_joint4', 'left_gripper_joint'
             ]
-            msg.position = joint_values
+            msg.position = joint_values[:5]  # 처음 5개 값만 사용
             
             # 발행
             self.left_joints_pub.publish(msg)
-            self.get_logger().debug(f'Published left arm joints: {joint_values}')
+            self.get_logger().info(f'Published left arm joints: {joint_values[:5]}')
             
         except Exception as e:
             self.get_logger().error(f'Error publishing left joints: {e}')
@@ -154,6 +194,10 @@ class ROS2SocketBridge(Node):
     def publish_right_joints(self, joint_values):
         """오른쪽 팔 조인트 상태 발행"""
         try:
+            if len(joint_values) < 5:
+                self.get_logger().warn(f'Incomplete joint data for right arm: {joint_values}')
+                return
+            
             # JointState 메시지 생성
             msg = JointState()
             
@@ -167,11 +211,11 @@ class ROS2SocketBridge(Node):
                 'right_joint1', 'right_joint2', 'right_joint3', 
                 'right_joint4', 'right_gripper_joint'
             ]
-            msg.position = joint_values
+            msg.position = joint_values[:5]  # 처음 5개 값만 사용
             
             # 발행
             self.right_joints_pub.publish(msg)
-            self.get_logger().debug(f'Published right arm joints: {joint_values}')
+            self.get_logger().info(f'Published right arm joints: {joint_values[:5]}')
             
         except Exception as e:
             self.get_logger().error(f'Error publishing right joints: {e}')
