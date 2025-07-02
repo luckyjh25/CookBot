@@ -97,7 +97,7 @@ print(f"Current working directory: {os.getcwd()}")
 try:
     # Load the model from the existing XML file
     print("Attempting to load the model...")
-    model = mujoco.MjModel.from_xml_path('/home/joonghyun/CookingBot/Mujoco/dual_arm_robot.xml')
+    model = mujoco.MjModel.from_xml_path('/home/joonghyun/CookBot/Teleoperation/Mujoco/dual_arm_robot.xml')
     data = mujoco.MjData(model)
     print("Model loaded successfully!")
     

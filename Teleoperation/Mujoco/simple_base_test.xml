@@ -1,0 +1,47 @@
+<mujoco model="simple_base_test">
+  <compiler angle="radian"/>
+  
+  <option integrator="implicitfast"/>
+  
+  <default>
+    <joint armature="0.01" damping="0.1"/>
+    <position kp="5000" kv="500" forcerange="-1000 1000"/>
+  </default>
+
+  <worldbody>
+    <light pos="0 0 2" dir="0 0 -1" directional="true"/>
+    <geom name="floor" size="0 0 0.05" type="plane"/>
+    
+    <!-- 매우 간단한 베이스 회전 테스트 -->
+    <body name="left_base" pos="0 -0.5 0">
+      <body name="left_rotating_box">
+        <inertial pos="0 0 0.1" mass="1.0" diaginertia="0.1 0.1 0.1"/>
+        <joint name="left_joint1" pos="0 0 0" axis="0 0 1" range="-3.14159 3.14159"/>
+        <geom type="box" size="0.3 0.1 0.1" rgba="1 0 0 1"/>
+      </body>
+    </body>
+    
+    <body name="right_base" pos="0 0.5 0">
+      <body name="right_rotating_box">
+        <inertial pos="0 0 0.1" mass="1.0" diaginertia="0.1 0.1 0.1"/>
+        <joint name="right_joint1" pos="0 0 0" axis="0 0 1" range="-3.14159 3.14159"/>
+        <geom type="box" size="0.3 0.1 0.1" rgba="0 0 1 1"/>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <position name="left_actuator_joint1" joint="left_joint1" ctrlrange="-3.142 3.142"/>
+    <position name="right_actuator_joint1" joint="right_joint1" ctrlrange="-3.142 3.142"/>
+    <position name="left_actuator_joint2" joint="left_joint2" ctrlrange="-1.5 1.5"/>
+    <position name="left_actuator_joint3" joint="left_joint3" ctrlrange="-1.5 1.4"/>
+    <position name="left_actuator_joint4" joint="left_joint4" ctrlrange="-1.7 1.97"/>
+    <position name="left_actuator_gripper_joint" joint="left_gripper_left_joint" ctrlrange="-0.01 0.019"/>
+  
+    <position name="right_actuator_joint2" joint="right_joint2" ctrlrange="-1.5 1.5"/>
+    <position name="right_actuator_joint3" joint="right_joint3" ctrlrange="-1.5 1.4"/>
+    <position name="right_actuator_joint4" joint="right_joint4" ctrlrange="-1.7 1.97"/>
+    <position name="right_actuator_gripper_joint" joint="right_gripper_left_joint" ctrlrange="-0.01 0.019"/>
+  </actuator>
+</mujoco>
+

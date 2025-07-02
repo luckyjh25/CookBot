@@ -1,11 +1,11 @@
-<mujoco model="dual_arm_robot_scene">
+<mujoco model="dual_arm_robot">
   <compiler angle="radian" meshdir="assets" autolimits="true"/>
 
   <option integrator="implicitfast"/>
 
   <default>
-    <joint armature="0.1" damping="10.0"/>
-    <position kp="1000" kv="200" forcerange="-100 100"/>
+    <joint armature="0.1" damping="1.0"/>
+    <position kp="5000" kv="500" forcerange="-500 500"/>
   </default>
 
   <asset>
@@ -16,13 +16,11 @@
     <mesh name="link5" file="link5.stl" scale="0.001 0.001 0.001"/>
     <mesh name="gripper_left_palm" file="gripper_left_palm.stl" scale="0.001 0.001 0.001"/>
     <mesh name="gripper_right_palm" file="gripper_right_palm.stl" scale="0.001 0.001 0.001"/>
-    <!-- d405_solid.stl 메시 추가 -->
     <mesh name="d405_solid" file="d405_solid.stl"/>
     <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
     <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3"
       markrgb="0.8 0.8 0.8" width="300" height="300"/>
     <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0.2"/>
-    <!-- 카메라 재질 추가 -->
     <material name="camera_black" rgba="0.15 0.15 0.15 1"/>
   </asset>
 
@@ -38,42 +36,59 @@
     <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
     <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
     
-    <!-- Left Robot -->
-    <body name="left_link1" pos="0 -0.4 0" euler="0 0 1.57">
-      <geom type="mesh" mesh="link1"/>
-      <body name="left_link2" pos="0.012 0 0.017">
-        <inertial pos="-0.000301849 0.000540437 0.0474335" quat="0.999915 0.000960074 0.0122201 -0.00449872" mass="0.0984068" diaginertia="3.4553e-05 3.26892e-05 1.88409e-05"/>
+    <!-- Left Robot - 베이스가 바닥에 고정되지만 회전 가능 -->
+    <body name="left_base_platform" pos="0 -0.4 0" euler="0 0 1.57">
+      <inertial pos="0 0 0.025" mass="5.0" diaginertia="0.1 0.1 0.1"/>
+      <geom type="box" size="0.08 0.08 0.025" rgba="0.2 0.2 0.2 1"/>
+      
+      <body name="left_base_rotator" pos="0 0 0.05">
+        <inertial pos="0 0 0.025" mass="1.0" diaginertia="0.01 0.01 0.01"/>
         <joint name="left_joint1" pos="0 0 0" axis="0 0 1" range="-3.14159 3.14159"/>
-        <geom pos="0 0 0.019" quat="1 0 0 0" type="mesh" mesh="link2"/>
-        <body name="left_link3" pos="0 0 0.0595">
-          <inertial pos="0.0103084 0.000377434 0.101702" quat="0.71133 0.0466763 0.0513691 0.699423" mass="0.138509" diaginertia="0.000342915 0.000335932 5.49578e-05"/>
-          <joint name="left_joint2" pos="0 0 0" axis="0 1 0" range="-1.5 1.5"/>
-          <geom type="mesh" mesh="link3"/>
-          <body name="left_link4" pos="0.024 0 0.128">
-            <inertial pos="0.0909096 0.000389298 0.000224133" quat="-0.00162881 0.706672 0.0026348 0.707535" mass="0.132746" diaginertia="0.000251551 0.000242311 3.06462e-05"/>
-            <joint name="left_joint3" pos="0 0 0" axis="0 1 0" range="-1.5 1.4"/>
-            <geom type="mesh" mesh="link4"/>
-            <body name="left_link5" pos="0.124 0 0">
-              <inertial pos="0.0442068 3.684e-07 0.00891422" quat="0.479052 0.479052 -0.520105 0.520105" mass="0.143276" diaginertia="9.3211e-05 8.07871e-05 7.59805e-05"/>
-              <joint name="left_joint4" pos="0 0 0" axis="0 1 0" range="-1.7 1.97"/>
-              <geom type="mesh" mesh="link5"/>
-              <!-- 카메라를 link5에 직접 추가 (위치만 앞으로 조정) -->
-              <geom type="mesh" mesh="d405_solid" material="camera_black" pos="0.07 0 0.06" quat="0.7071 0 0.7071 0"/>
-              <camera name="left_wrist_cam" pos="0.07 0 0.06" mode="fixed" euler="0 1.57 0"
-                      focal="1.93e-3 1.93e-3" resolution="1280 720" sensorsize="3896e-6 2140e-6"/>
-              <body name="left_gripper_left_link" pos="0.0817 0.021 0">
-                <inertial pos="0 0 0" mass="0.001" diaginertia="1e-06 1e-06 1e-06"/>
-                <joint name="left_gripper_left_joint" pos="0 0 0" axis="0 1 0" type="slide" range="-0.01 0.019"/>
-                <geom type="mesh" mesh="gripper_left_palm"/>
-              </body>
-              <body name="left_gripper_right_link" pos="0.0817 -0.021 0">
-                <inertial pos="0 0 0" mass="0.001" diaginertia="1e-06 1e-06 1e-06"/>
-                <joint name="left_gripper_right_joint" pos="0 0 0" axis="0 -1 0" type="slide" range="-0.01 0.019"/>
-                <geom type="mesh" mesh="gripper_right_palm"/>
-              </body>
-              <body name="left_end_effector_target" pos="0.14 0 0">
-                <inertial pos="0 0 0" mass="0.001" diaginertia="1e-06 1e-06 1e-06"/>
-                <geom type="box" size="0.005 0.005 0.005" rgba="1 0 0 1" contype="0" conaffinity="0"/>
+        <geom type="box" size="0.05 0.05 0.025" rgba="0.4 0.4 0.4 1"/>
+        
+        <body name="left_link1" pos="0 0 0.025">
+          <inertial pos="0 0 0.05" mass="2.0" diaginertia="0.1 0.1 0.1"/>
+          <geom type="mesh" mesh="link1"/>
+          
+          <body name="left_link2" pos="0.012 0 0.017">
+            <inertial pos="-0.000301849 0.000540437 0.0474335" quat="0.999915 0.000960074 0.0122201 -0.00449872" mass="0.0984068" diaginertia="3.4553e-05 3.26892e-05 1.88409e-05"/>
+            <joint name="left_joint2" pos="0 0 0" axis="0 1 0" range="-1.5 1.5"/>
+            <geom pos="0 0 0.019" quat="1 0 0 0" type="mesh" mesh="link2"/>
+            
+            <body name="left_link3" pos="0 0 0.0595">
+              <inertial pos="0.0103084 0.000377434 0.101702" quat="0.71133 0.0466763 0.0513691 0.699423" mass="0.138509" diaginertia="0.000342915 0.000335932 5.49578e-05"/>
+              <joint name="left_joint3" pos="0 0 0" axis="0 1 0" range="-1.5 1.4"/>
+              <geom type="mesh" mesh="link3"/>
+              
+              <body name="left_link4" pos="0.024 0 0.128">
+                <inertial pos="0.0909096 0.000389298 0.000224133" quat="-0.00162881 0.706672 0.0026348 0.707535" mass="0.132746" diaginertia="0.000251551 0.000242311 3.06462e-05"/>
+                <joint name="left_joint4" pos="0 0 0" axis="0 1 0" range="-1.7 1.97"/>
+                <geom type="mesh" mesh="link4"/>
+                
+                <body name="left_link5" pos="0.124 0 0">
+                  <inertial pos="0.0442068 3.684e-07 0.00891422" quat="0.479052 0.479052 -0.520105 0.520105" mass="0.143276" diaginertia="9.3211e-05 8.07871e-05 7.59805e-05"/>
+                  <geom type="mesh" mesh="link5"/>
+                  <geom type="mesh" mesh="d405_solid" material="camera_black" pos="0.07 0 0.06" quat="0.7071 0 0.7071 0"/>
+                  <camera name="left_wrist_cam" pos="0.07 0 0.06" mode="fixed" euler="0 1.57 0"
+                          focal="1.93e-3 1.93e-3" resolution="1280 720" sensorsize="3896e-6 2140e-6"/>
+                          
+                  <body name="left_gripper_left_link" pos="0.0817 0.021 0">
+                    <inertial pos="0 0 0" mass="0.001" diaginertia="1e-06 1e-06 1e-06"/>
+                    <joint name="left_gripper_left_joint" pos="0 0 0" axis="0 1 0" type="slide" range="-0.01 0.019"/>
+                    <geom type="mesh" mesh="gripper_left_palm"/>
+                  </body>
+                  
+                  <body name="left_gripper_right_link" pos="0.0817 -0.021 0">
+                    <inertial pos="0 0 0" mass="0.001" diaginertia="1e-06 1e-06 1e-06"/>
+                    <joint name="left_gripper_right_joint" pos="0 0 0" axis="0 -1 0" type="slide" range="-0.01 0.019"/>
+                    <geom type="mesh" mesh="gripper_right_palm"/>
+                  </body>
+                  
+                  <body name="left_end_effector_target" pos="0.14 0 0">
+                    <inertial pos="0 0 0" mass="0.001" diaginertia="1e-06 1e-06 1e-06"/>
+                    <geom type="box" size="0.005 0.005 0.005" rgba="1 0 0 1" contype="0" conaffinity="0"/>
+                  </body>
+                </body>
               </body>
             </body>
           </body>
@@ -81,42 +96,59 @@
       </body>
     </body>
     
-    <!-- Right Robot (positioned to face the left one) -->
-    <body name="right_link1" pos="0 0.2 0" euler="0 0 -1.57">
-      <geom type="mesh" mesh="link1"/>
-      <body name="right_link2" pos="0.012 0 0.017">
-        <inertial pos="-0.000301849 0.000540437 0.0474335" quat="0.999915 0.000960074 0.0122201 -0.00449872" mass="0.0984068" diaginertia="3.4553e-05 3.26892e-05 1.88409e-05"/>
+    <!-- Right Robot - 베이스가 바닥에 고정되지만 회전 가능 -->
+    <body name="right_base_platform" pos="0 0.2 0" euler="0 0 -1.57">
+      <inertial pos="0 0 0.025" mass="5.0" diaginertia="0.1 0.1 0.1"/>
+      <geom type="box" size="0.08 0.08 0.025" rgba="0.2 0.2 0.2 1"/>
+      
+      <body name="right_base_rotator" pos="0 0 0.05">
+        <inertial pos="0 0 0.025" mass="1.0" diaginertia="0.01 0.01 0.01"/>
         <joint name="right_joint1" pos="0 0 0" axis="0 0 1" range="-3.14159 3.14159"/>
-        <geom pos="0 0 0.019" quat="1 0 0 0" type="mesh" mesh="link2"/>
-        <body name="right_link3" pos="0 0 0.0595">
-          <inertial pos="0.0103084 0.000377434 0.101702" quat="0.71133 0.0466763 0.0513691 0.699423" mass="0.138509" diaginertia="0.000342915 0.000335932 5.49578e-05"/>
-          <joint name="right_joint2" pos="0 0 0" axis="0 1 0" range="-1.5 1.5"/>
-          <geom type="mesh" mesh="link3"/>
-          <body name="right_link4" pos="0.024 0 0.128">
-            <inertial pos="0.0909096 0.000389298 0.000224133" quat="-0.00162881 0.706672 0.0026348 0.707535" mass="0.132746" diaginertia="0.000251551 0.000242311 3.06462e-05"/>
-            <joint name="right_joint3" pos="0 0 0" axis="0 1 0" range="-1.5 1.4"/>
-            <geom type="mesh" mesh="link4"/>
-            <body name="right_link5" pos="0.124 0 0">
-              <inertial pos="0.0442068 3.684e-07 0.00891422" quat="0.479052 0.479052 -0.520105 0.520105" mass="0.143276" diaginertia="9.3211e-05 8.07871e-05 7.59805e-05"/>
-              <joint name="right_joint4" pos="0 0 0" axis="0 1 0" range="-1.7 1.97"/>
-              <geom type="mesh" mesh="link5"/>
-              <!-- 카메라를 link5에 직접 추가 (위치만 앞으로 조정) -->
-              <geom type="mesh" mesh="d405_solid" material="camera_black" pos="0.07 0 0.06" quat="0.7071 0 0.7071 0"/>
-              <camera name="right_wrist_cam" pos="0.07 0 0.06" mode="fixed" euler="0 -1.57 0"
-                      focal="1.93e-3 1.93e-3" resolution="1280 720" sensorsize="3896e-6 2140e-6"/>
-              <body name="right_gripper_left_link" pos="0.0817 0.021 0">
-                <inertial pos="0 0 0" mass="0.001" diaginertia="1e-06 1e-06 1e-06"/>
-                <joint name="right_gripper_left_joint" pos="0 0 0" axis="0 1 0" type="slide" range="-0.01 0.019"/>
-                <geom type="mesh" mesh="gripper_left_palm"/>
-              </body>
-              <body name="right_gripper_right_link" pos="0.0817 -0.021 0">
-                <inertial pos="0 0 0" mass="0.001" diaginertia="1e-06 1e-06 1e-06"/>
-                <joint name="right_gripper_right_joint" pos="0 0 0" axis="0 -1 0" type="slide" range="-0.01 0.019"/>
-                <geom type="mesh" mesh="gripper_right_palm"/>
-              </body>
-              <body name="right_end_effector_target" pos="0.14 0 0">
-                <inertial pos="0 0 0" mass="0.001" diaginertia="1e-06 1e-06 1e-06"/>
-                <geom type="box" size="0.005 0.005 0.005" rgba="0 0 1 1" contype="0" conaffinity="0"/>
+        <geom type="box" size="0.05 0.05 0.025" rgba="0.4 0.4 0.4 1"/>
+        
+        <body name="right_link1" pos="0 0 0.025">
+          <inertial pos="0 0 0.05" mass="2.0" diaginertia="0.1 0.1 0.1"/>
+          <geom type="mesh" mesh="link1"/>
+          
+          <body name="right_link2" pos="0.012 0 0.017">
+            <inertial pos="-0.000301849 0.000540437 0.0474335" quat="0.999915 0.000960074 0.0122201 -0.00449872" mass="0.0984068" diaginertia="3.4553e-05 3.26892e-05 1.88409e-05"/>
+            <joint name="right_joint2" pos="0 0 0" axis="0 1 0" range="-1.5 1.5"/>
+            <geom pos="0 0 0.019" quat="1 0 0 0" type="mesh" mesh="link2"/>
+            
+            <body name="right_link3" pos="0 0 0.0595">
+              <inertial pos="0.0103084 0.000377434 0.101702" quat="0.71133 0.0466763 0.0513691 0.699423" mass="0.138509" diaginertia="0.000342915 0.000335932 5.49578e-05"/>
+              <joint name="right_joint3" pos="0 0 0" axis="0 1 0" range="-1.5 1.4"/>
+              <geom type="mesh" mesh="link3"/>
+              
+              <body name="right_link4" pos="0.024 0 0.128">
+                <inertial pos="0.0909096 0.000389298 0.000224133" quat="-0.00162881 0.706672 0.0026348 0.707535" mass="0.132746" diaginertia="0.000251551 0.000242311 3.06462e-05"/>
+                <joint name="right_joint4" pos="0 0 0" axis="0 1 0" range="-1.7 1.97"/>
+                <geom type="mesh" mesh="link4"/>
+                
+                <body name="right_link5" pos="0.124 0 0">
+                  <inertial pos="0.0442068 3.684e-07 0.00891422" quat="0.479052 0.479052 -0.520105 0.520105" mass="0.143276" diaginertia="9.3211e-05 8.07871e-05 7.59805e-05"/>
+                  <geom type="mesh" mesh="link5"/>
+                  <geom type="mesh" mesh="d405_solid" material="camera_black" pos="0.07 0 0.06" quat="0.7071 0 0.7071 0"/>
+                  <camera name="right_wrist_cam" pos="0.07 0 0.06" mode="fixed" euler="0 -1.57 0"
+                          focal="1.93e-3 1.93e-3" resolution="1280 720" sensorsize="3896e-6 2140e-6"/>
+                          
+                  <body name="right_gripper_left_link" pos="0.0817 0.021 0">
+                    <inertial pos="0 0 0" mass="0.001" diaginertia="1e-06 1e-06 1e-06"/>
+                    <joint name="right_gripper_left_joint" pos="0 0 0" axis="0 1 0" type="slide" range="-0.01 0.019"/>
+                    <geom type="mesh" mesh="gripper_left_palm"/>
+                  </body>
+                  
+                  <body name="right_gripper_right_link" pos="0.0817 -0.021 0">
+                    <inertial pos="0 0 0" mass="0.001" diaginertia="1e-06 1e-06 1e-06"/>
+                    <joint name="right_gripper_right_joint" pos="0 0 0" axis="0 -1 0" type="slide" range="-0.01 0.019"/>
+                    <geom type="mesh" mesh="gripper_right_palm"/>
+                  </body>
+                  
+                  <body name="right_end_effector_target" pos="0.14 0 0">
+                    <inertial pos="0 0 0" mass="0.001" diaginertia="1e-06 1e-06 1e-06"/>
+                    <geom type="box" size="0.005 0.005 0.005" rgba="0 0 1 1" contype="0" conaffinity="0"/>
+                  </body>
+                </body>
               </body>
             </body>
           </body>
@@ -125,22 +157,13 @@
     </body>
   </worldbody>
 
-  <!-- Exclude contact information -->
-  <contact>
-    <exclude body1="world" body2="left_link2"/>
-    <exclude body1="world" body2="right_link2"/>
-  </contact>
-
-  <!-- Define actuators -->
   <actuator>
-    <!-- Left arm actuators -->
     <position name="left_actuator_joint1" joint="left_joint1" ctrlrange="-3.142 3.142"/>
     <position name="left_actuator_joint2" joint="left_joint2" ctrlrange="-1.5 1.5"/>
     <position name="left_actuator_joint3" joint="left_joint3" ctrlrange="-1.5 1.4"/>
     <position name="left_actuator_joint4" joint="left_joint4" ctrlrange="-1.7 1.97"/>
     <position name="left_actuator_gripper_joint" joint="left_gripper_left_joint" ctrlrange="-0.01 0.019"/>
     
-    <!-- Right arm actuators -->
     <position name="right_actuator_joint1" joint="right_joint1" ctrlrange="-3.142 3.142"/>
     <position name="right_actuator_joint2" joint="right_joint2" ctrlrange="-1.5 1.5"/>
     <position name="right_actuator_joint3" joint="right_joint3" ctrlrange="-1.5 1.4"/>
@@ -148,7 +171,6 @@
     <position name="right_actuator_gripper_joint" joint="right_gripper_left_joint" ctrlrange="-0.01 0.019"/>
   </actuator>
   
-  <!-- Equality constraints for grippers -->
   <equality>
     <joint name="left_equality_gripper" active="true" joint1="left_gripper_left_joint" joint2="left_gripper_right_joint" polycoef="0 1 0 0 0"/>
     <joint name="right_equality_gripper" active="true" joint1="right_gripper_left_joint" joint2="right_gripper_right_joint" polycoef="0 1 0 0 0"/>
